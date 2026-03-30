@@ -204,3 +204,138 @@ class TestGetLogger:
 
         # Clean up
         logger.removeHandler(test_handler)
+
+
+class TestSetupLoggingErrorHandling:
+    """Test suite for setup_logging error handling and validation."""
+
+    def test_invalid_logging_level_raises_error(self, reset_logging):
+        """Test that invalid logging level raises ValueError."""
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid logging level"):
+            setup_logging(level=999)
+
+    def test_invalid_logging_level_negative(self, reset_logging):
+        """Test that negative logging level raises ValueError."""
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid logging level"):
+            setup_logging(level=-1)
+
+    def test_invalid_log_file_not_string(self, reset_logging):
+        """Test that non-string log_file raises TypeError."""
+        import pytest
+
+        with pytest.raises(TypeError, match="log_file must be a string"):
+            setup_logging(level=logging.INFO, log_file=123)
+
+    def test_invalid_log_file_empty_string(self, reset_logging):
+        """Test that empty string log_file raises ValueError."""
+        import pytest
+
+        with pytest.raises(ValueError, match="log_file cannot be empty"):
+            setup_logging(level=logging.INFO, log_file="")
+
+    def test_invalid_log_file_whitespace(self, reset_logging):
+        """Test that whitespace-only log_file raises ValueError."""
+        import pytest
+
+        with pytest.raises(ValueError, match="log_file cannot be empty"):
+            setup_logging(level=logging.INFO, log_file="   ")
+
+    def test_setup_logging_continues_with_console_on_file_error(self, reset_logging):
+        """Test that setup_logging continues with console if file setup fails."""
+        import sys
+        from io import StringIO
+        import tempfile
+
+        # Create a scenario where directory creation succeeds but file writing fails
+        # by using a valid directory but then making the file handle fail during creation
+        temp_dir = tempfile.mkdtemp()
+
+        # Capture stdout to check for warning message
+        old_stdout = sys.stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        try:
+            # Use a valid path but we'll mock the FileHandler to fail
+            valid_path = os.path.join(temp_dir, "test.log")
+
+            with patch('aitext.web.middleware.logging_config.logging.FileHandler') as mock_file_handler:
+                # Mock FileHandler to raise an exception
+                mock_file_handler.side_effect = PermissionError("Permission denied")
+
+                setup_logging(level=logging.INFO, log_file=valid_path)
+
+            # Verify console logging is still working
+            root_logger = logging.getLogger()
+            assert root_logger.level == logging.INFO
+            assert len(root_logger.handlers) == 1  # Only console handler
+            assert isinstance(root_logger.handlers[0], logging.StreamHandler)
+
+            # Verify warning was printed
+            output = captured_output.getvalue()
+            assert "WARNING: Failed to setup file logging" in output
+            assert "Logging will continue with console output only" in output
+
+        finally:
+            sys.stdout = old_stdout
+            import shutil
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
+    def test_valid_logging_levels(self, reset_logging):
+        """Test that all valid logging levels work correctly."""
+        from itertools import product
+
+        # Test all valid logging levels
+        valid_levels = [
+            logging.DEBUG,
+            logging.INFO,
+            logging.WARNING,
+            logging.ERROR,
+            logging.CRITICAL
+        ]
+
+        for level in valid_levels:
+            setup_logging(level=level)
+            root_logger = logging.getLogger()
+            assert root_logger.level == level
+
+            # Clear handlers for next test
+            for handler in root_logger.handlers[:]:
+                root_logger.removeHandler(handler)
+
+    def test_valid_log_file_creates_directory(self, reset_logging):
+        """Test that valid log file path creates parent directories if needed."""
+        import tempfile
+        import shutil
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # Create a nested directory path that doesn't exist yet
+            nested_path = os.path.join(temp_dir, "level1", "level2", "test.log")
+
+            # This should create the directories and set up the file handler
+            setup_logging(level=logging.INFO, log_file=nested_path)
+
+            root_logger = logging.getLogger()
+            assert len(root_logger.handlers) == 2
+
+            # Verify the file was created
+            assert os.path.exists(nested_path)
+            assert os.path.isfile(nested_path)
+
+            # Clean up the file handler before removing directories
+            file_handler = root_logger.handlers[1]
+            file_handler.close()
+            root_logger.removeHandler(file_handler)
+
+        finally:
+            # Clean up temp directory
+            import time
+            time.sleep(0.1)  # Give time for file handles to be released
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
