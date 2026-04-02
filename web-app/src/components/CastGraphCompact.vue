@@ -2,11 +2,11 @@
   <div class="cgc-root">
     <div class="cgc-toolbar">
       <n-text depth="3" class="cgc-hint">
-        与全页「人物关系网」同源（<code>cast_graph.json</code>）· 侧栏只读预览 · 点节点进入全页编辑
+        从三元组自动生成（只读）· 要编辑人物关系，请在「叙事与知识」中修改三元组 · 点节点进入全页查看
       </n-text>
       <n-space :size="8">
-        <n-button size="small" quaternary :loading="loading" @click="reload">同步数据</n-button>
-        <n-button size="small" secondary @click="goFull">完整编辑页</n-button>
+        <n-button size="small" quaternary :loading="loading" @click="reload">刷新</n-button>
+        <n-button size="small" secondary @click="goFull">完整查看页</n-button>
       </n-space>
     </div>
     <div v-if="emptyHint" class="cgc-empty">

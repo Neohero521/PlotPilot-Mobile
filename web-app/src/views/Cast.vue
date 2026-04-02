@@ -7,7 +7,7 @@
           工作台
         </n-button>
         <n-divider vertical />
-        <h1 class="cast-title">人物关系网</h1>
+        <h1 class="cast-title">人物关系网（只读）</h1>
         <n-text depth="3">{{ slug }}</n-text>
       </n-space>
       <n-space>
@@ -20,7 +20,7 @@
           @update:value="onSearch"
         />
         <n-button secondary @click="reload">刷新</n-button>
-        <n-button type="primary" :loading="saving" @click="saveAll">保存</n-button>
+        <n-button type="primary" @click="goKnowledge">编辑三元组</n-button>
       </n-space>
     </header>
 
@@ -114,84 +114,55 @@
           </n-collapse-item>
         </n-collapse>
 
+        <n-alert type="info" title="关系图现在从三元组自动生成" style="margin-bottom: 16px;">
+          <p>要编辑人物和关系，请前往工作台的「叙事与知识」标签页，编辑三元组后保存。</p>
+          <p style="margin-top: 8px;"><strong>人物节点规范：</strong></p>
+          <ul style="margin: 4px 0; padding-left: 20px;">
+            <li>主语：人物名称</li>
+            <li>谓词：是</li>
+            <li>宾语：主角 / 配角 / 反派 / 人物</li>
+            <li>备注：人物描述</li>
+          </ul>
+          <p style="margin-top: 8px;"><strong>人物关系规范：</strong></p>
+          <ul style="margin: 4px 0; padding-left: 20px;">
+            <li>主语：人物A</li>
+            <li>谓词：师徒 / 父子 / 朋友 / 敌对 / ...</li>
+            <li>宾语：人物B</li>
+            <li>备注：关系说明</li>
+          </ul>
+          <n-button type="primary" @click="goKnowledge" style="margin-top: 12px;">
+            前往编辑三元组
+          </n-button>
+        </n-alert>
+
         <n-tabs v-model:value="castPane" type="segment" animated>
-          <n-tab-pane name="node" tab="人物">
-            <n-form label-placement="top" class="side-form">
-              <n-form-item label="ID（唯一）">
-                <n-input v-model:value="formChar.id" placeholder="如 zhang_san" />
-              </n-form-item>
-              <n-form-item label="姓名">
-                <n-input v-model:value="formChar.name" />
-              </n-form-item>
-              <n-form-item label="别名（逗号分隔）">
-                <n-input v-model:value="formChar.aliasesStr" placeholder="张三, 小张" />
-              </n-form-item>
-              <n-form-item label="角色定位">
-                <n-input v-model:value="formChar.role" />
-              </n-form-item>
-              <n-form-item label="特点">
-                <n-input v-model:value="formChar.traits" type="textarea" :rows="2" />
-              </n-form-item>
-              <n-form-item label="备注">
-                <n-input v-model:value="formChar.note" type="textarea" :rows="2" />
-              </n-form-item>
-              <n-form-item label="人物线事件（里程碑，可与章号对齐）">
-                <div v-for="(ev, ei) in formChar.events" :key="ei" class="ev-row">
-                  <n-input v-model:value="ev.id" size="small" placeholder="事件 id" class="ev-id" />
-                  <n-input-number v-model:value="ev.chapter_id" :min="1" clearable size="small" placeholder="章" class="ev-ch" />
-                  <n-select v-model:value="ev.importance" size="small" class="ev-imp" :options="impOptions" />
-                  <n-input v-model:value="ev.summary" type="textarea" :rows="2" placeholder="事件描述" class="ev-sum" />
-                  <n-button size="tiny" quaternary type="error" @click="removeCharEvent(ei)">删</n-button>
-                </div>
-                <n-button dashed size="tiny" block @click="addCharEvent">+ 添加事件</n-button>
-              </n-form-item>
-              <n-space>
-                <n-button type="primary" @click="applyCharacter">写入图中</n-button>
-                <n-button secondary @click="newCharacter">新建空节点</n-button>
-                <n-button v-if="formChar.id" type="error" quaternary @click="removeCharacter">删除此人</n-button>
-              </n-space>
-            </n-form>
+          <n-tab-pane name="node" tab="人物详情">
+            <div v-if="formChar.id" class="side-form">
+              <n-descriptions label-placement="left" :column="1" bordered size="small">
+                <n-descriptions-item label="ID">{{ formChar.id }}</n-descriptions-item>
+                <n-descriptions-item label="姓名">{{ formChar.name }}</n-descriptions-item>
+                <n-descriptions-item label="别名">{{ formChar.aliasesStr || '无' }}</n-descriptions-item>
+                <n-descriptions-item label="角色定位">{{ formChar.role || '无' }}</n-descriptions-item>
+                <n-descriptions-item label="特点">{{ formChar.traits || '无' }}</n-descriptions-item>
+                <n-descriptions-item label="备注">{{ formChar.note || '无' }}</n-descriptions-item>
+              </n-descriptions>
+            </div>
+            <n-empty v-else description="点击图中节点查看人物详情" size="small" style="margin-top: 40px;" />
           </n-tab-pane>
-          <n-tab-pane name="edge" tab="关系">
-            <n-form label-placement="top" class="side-form">
-              <n-form-item label="关系 ID">
-                <n-input v-model:value="formRel.id" placeholder="可空自动生成" />
-              </n-form-item>
-              <n-form-item label="起点人物 ID">
-                <n-input v-model:value="formRel.source_id" />
-              </n-form-item>
-              <n-form-item label="终点人物 ID">
-                <n-input v-model:value="formRel.target_id" />
-              </n-form-item>
-              <n-form-item label="关系类型">
-                <n-input v-model:value="formRel.label" placeholder="如 师徒、夫妻、敌对" />
-              </n-form-item>
-              <n-form-item label="备注">
-                <n-input v-model:value="formRel.note" type="textarea" :rows="2" />
-              </n-form-item>
-              <n-form-item label="有向边">
-                <n-switch v-model:value="formRel.directed" />
-              </n-form-item>
-              <n-form-item label="两人间共同经历 / 关键事件">
-                <div v-for="(ev, ei) in formRel.events" :key="ei" class="ev-row">
-                  <n-input v-model:value="ev.id" size="small" placeholder="事件 id" class="ev-id" />
-                  <n-input-number v-model:value="ev.chapter_id" :min="1" clearable size="small" placeholder="章" class="ev-ch" />
-                  <n-select v-model:value="ev.importance" size="small" class="ev-imp" :options="impOptions" />
-                  <n-input v-model:value="ev.summary" type="textarea" :rows="2" placeholder="事件描述" class="ev-sum" />
-                  <n-button size="tiny" quaternary type="error" @click="removeRelEvent(ei)">删</n-button>
-                </div>
-                <n-button dashed size="tiny" block @click="addRelEvent">+ 添加事件</n-button>
-              </n-form-item>
-              <n-space>
-                <n-button type="primary" @click="applyRelationship">写入图中</n-button>
-                <n-button v-if="formRel.id" type="error" quaternary @click="removeRelationship">删除此关系</n-button>
-              </n-space>
-            </n-form>
+          <n-tab-pane name="edge" tab="关系详情">
+            <div v-if="formRel.id" class="side-form">
+              <n-descriptions label-placement="left" :column="1" bordered size="small">
+                <n-descriptions-item label="关系 ID">{{ formRel.id }}</n-descriptions-item>
+                <n-descriptions-item label="起点人物">{{ formRel.source_id }}</n-descriptions-item>
+                <n-descriptions-item label="终点人物">{{ formRel.target_id }}</n-descriptions-item>
+                <n-descriptions-item label="关系类型">{{ formRel.label }}</n-descriptions-item>
+                <n-descriptions-item label="备注">{{ formRel.note || '无' }}</n-descriptions-item>
+                <n-descriptions-item label="有向边">{{ formRel.directed ? '是' : '否' }}</n-descriptions-item>
+              </n-descriptions>
+            </div>
+            <n-empty v-else description="点击图中边查看关系详情" size="small" style="margin-top: 40px;" />
           </n-tab-pane>
         </n-tabs>
-        <n-alert type="info" class="cast-hint" title="提示">
-          点击节点编辑人物、点击边编辑关系；事件可手填或由对话里 cast_upsert_story_event 写入。开启流式输出时工具步骤会实时展示摘要（ReAct 感）。
-        </n-alert>
       </aside>
     </div>
   </div>
@@ -204,13 +175,6 @@ import { useMessage } from 'naive-ui'
 import GraphChart from '../components/charts/GraphChart.vue'
 import { convertGraph, type VisNode, type VisEdge, type EChartsNode, type EChartsLink } from '../utils/visToEcharts'
 import { castApi } from '../api/cast'
-
-interface StoryEventRow {
-  id: string
-  summary: string
-  chapter_id: number | null
-  importance: string
-}
 
 interface CastCharacter {
   id: string
@@ -277,11 +241,8 @@ const visibleCastRows = computed(() => {
 })
 
 const castPane = ref<'node' | 'edge'>('node')
-const impOptions = [
-  { label: '通常', value: 'normal' },
-  { label: '关键', value: 'key' },
-]
 
+// 只读显示用的数据
 const formChar = ref({
   id: '',
   name: '',
@@ -289,7 +250,6 @@ const formChar = ref({
   role: '',
   traits: '',
   note: '',
-  events: [] as StoryEventRow[],
 })
 
 const formRel = ref({
@@ -299,59 +259,9 @@ const formRel = ref({
   label: '',
   note: '',
   directed: true,
-  events: [] as StoryEventRow[],
 })
 
-const mapEventsFromApi = (
-  raw: CastCharacter['story_events'] | CastRelationship['story_events']
-): StoryEventRow[] =>
-  (raw || []).map(e => ({
-    id: e.id || '',
-    summary: e.summary || '',
-    chapter_id: e.chapter_id != null && e.chapter_id >= 1 ? e.chapter_id : null,
-    importance: e.importance || 'normal',
-  }))
-
-const normalizeStoryEvents = (rows: StoryEventRow[]) => {
-  const out: Array<{ id: string; summary: string; chapter_id?: number; importance: string }> = []
-  for (const e of rows) {
-    const sum = (e.summary || '').trim()
-    if (!sum) continue
-    let id = (e.id || '').trim()
-    if (!id) id = `ev_${Math.random().toString(36).slice(2, 11)}`
-    const ch = e.chapter_id != null && e.chapter_id >= 1 ? e.chapter_id : undefined
-    out.push({
-      id,
-      summary: sum,
-      ...(ch != null ? { chapter_id: ch } : {}),
-      importance: e.importance || 'normal',
-    })
-  }
-  return out
-}
-
-const addCharEvent = () => {
-  formChar.value.events.push({
-    id: '',
-    summary: '',
-    chapter_id: null,
-    importance: 'normal',
-  })
-}
-const removeCharEvent = (ei: number) => {
-  formChar.value.events.splice(ei, 1)
-}
-const addRelEvent = () => {
-  formRel.value.events.push({
-    id: '',
-    summary: '',
-    chapter_id: null,
-    importance: 'normal',
-  })
-}
-const removeRelEvent = (ei: number) => {
-  formRel.value.events.splice(ei, 1)
-}
+// 编辑功能已移除 - 关系图现为只读，从三元组自动生成
 
 const buildVisData = () => {
   const hi = highlightIds.value
@@ -398,7 +308,6 @@ const handleNodeClick = (node: EChartsNode) => {
       role: c.role || '',
       traits: c.traits || '',
       note: c.note || '',
-      events: mapEventsFromApi(c.story_events),
     }
   }
 }
@@ -417,7 +326,6 @@ const handleEdgeClick = (link: EChartsLink) => {
       label: r.label || '',
       note: r.note || '',
       directed: r.directed,
-      events: mapEventsFromApi(r.story_events),
     }
   }
 }
@@ -483,96 +391,14 @@ const onSearch = () => {
   }, 280)
 }
 
-const applyCharacter = () => {
-  const id = formChar.value.id.trim()
-  const name = formChar.value.name.trim()
-  if (!id || !name) {
-    message.warning('请填写 ID 与姓名')
-    return
-  }
-  const aliases = formChar.value.aliasesStr
-    .split(/[,，]/)
-    .map(s => s.trim())
-    .filter(Boolean)
-  const next: CastCharacter = {
-    id,
-    name,
-    aliases,
-    role: formChar.value.role.trim(),
-    traits: formChar.value.traits.trim(),
-    note: formChar.value.note.trim(),
-    story_events: normalizeStoryEvents(formChar.value.events),
-  }
-  const i = graph.value.characters.findIndex(c => c.id === id)
-  if (i >= 0) graph.value.characters[i] = next
-  else graph.value.characters.push(next)
-  message.success('已写入（记得点保存同步到服务器）')
-}
-
-const newCharacter = () => {
-  formChar.value = { id: '', name: '', aliasesStr: '', role: '', traits: '', note: '', events: [] }
-}
-
-const removeCharacter = () => {
-  const id = formChar.value.id.trim()
-  if (!id) return
-  graph.value.characters = graph.value.characters.filter(c => c.id !== id)
-  graph.value.relationships = graph.value.relationships.filter(r => r.source_id !== id && r.target_id !== id)
-  newCharacter()
-  message.success('已从图中移除（保存后生效）')
-}
-
-const applyRelationship = () => {
-  const sid = formRel.value.source_id.trim()
-  const tid = formRel.value.target_id.trim()
-  if (!sid || !tid) {
-    message.warning('请填写起点与终点人物 ID')
-    return
-  }
-  let rid = formRel.value.id.trim()
-  if (!rid) rid = `r_${Math.random().toString(36).slice(2, 12)}`
-  const next: CastRelationship = {
-    id: rid,
-    source_id: sid,
-    target_id: tid,
-    label: formRel.value.label.trim(),
-    note: formRel.value.note.trim(),
-    directed: formRel.value.directed,
-    story_events: normalizeStoryEvents(formRel.value.events),
-  }
-  const i = graph.value.relationships.findIndex(r => r.id === rid)
-  if (i >= 0) graph.value.relationships[i] = next
-  else graph.value.relationships.push(next)
-  formRel.value.id = rid
-  message.success('关系已写入（记得保存）')
-}
-
-const removeRelationship = () => {
-  const id = formRel.value.id.trim()
-  if (!id) return
-  graph.value.relationships = graph.value.relationships.filter(r => r.id !== id)
-  message.success('已移除')
-}
-
-const saveAll = async () => {
-  saving.value = true
-  try {
-    await castApi.putCast(slug, {
-      version: 2,
-      characters: graph.value.characters,
-      relationships: graph.value.relationships,
-    })
-    message.success('已保存到服务器')
-    void loadCoverage()
-  } catch (e: any) {
-    message.error(e?.response?.data?.detail || '保存失败')
-  } finally {
-    saving.value = false
-  }
-}
+// 编辑功能已移除 - 关系图现为只读，从三元组自动生成
 
 const goWorkbench = () => {
   router.push(`/book/${slug}/workbench`)
+}
+
+const goKnowledge = () => {
+  router.push(`/book/${slug}/workbench?tab=knowledge`)
 }
 
 onMounted(async () => {

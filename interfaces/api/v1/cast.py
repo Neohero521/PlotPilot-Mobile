@@ -56,50 +56,47 @@ async def get_cast_graph(
     novel_id: str,
     service: CastService = Depends(get_cast_service)
 ):
-    """Get cast graph for a novel
+    """获取人物关系图（从三元组自动生成）
+
+    关系图现在从 novel_knowledge.json 的 facts 字段自动提取：
+    - 人物节点：predicate="是" 且 object 包含"主角"、"配角"等关键词
+    - 人物关系：predicate 为"师徒"、"父子"、"朋友"等关系谓词
 
     Args:
         novel_id: Novel ID
         service: Cast service
 
     Returns:
-        Cast graph DTO
+        Cast graph DTO（自动生成）
 
     Raises:
-        HTTPException: If cast graph not found
+        HTTPException: If knowledge not found
     """
     cast_graph = service.get_cast_graph(novel_id)
     if cast_graph is None:
-        # 尚无 cast 文件时返回空图，避免前端把「未创建」当成路由错误
+        # 尚无 knowledge 文件时返回空图
         return CastGraphDTO(version=2, characters=[], relationships=[])
     return cast_graph
 
 
-@router.put("/novels/{novel_id}/cast", response_model=CastGraphDTO)
-async def update_cast_graph(
-    novel_id: str,
-    request: UpdateCastGraphRequest,
-    service: CastService = Depends(get_cast_service)
-):
-    """Update cast graph for a novel
-
-    Args:
-        novel_id: Novel ID
-        request: Update cast graph request
-        service: Cast service
-
-    Returns:
-        Updated cast graph DTO
-
-    Raises:
-        HTTPException: If update fails
-    """
-    try:
-        return service.update_cast_graph(novel_id, request.model_dump())
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update cast graph: {str(e)}")
+# PUT 接口已移除：关系图现在从 novel_knowledge.json 的三元组自动生成
+# 要编辑人物关系，请直接修改 /api/v1/novels/{novel_id}/knowledge 中的 facts 字段
+#
+# 人物节点规范：
+# {
+#   "subject": "张三",
+#   "predicate": "是",
+#   "object": "主角" | "配角" | "人物",
+#   "note": "人物描述"
+# }
+#
+# 人物关系规范：
+# {
+#   "subject": "张三",
+#   "predicate": "师徒" | "父子" | "朋友" | "敌对" | ...,
+#   "object": "李四",
+#   "note": "关系说明"
+# }
 
 
 @router.get("/novels/{novel_id}/cast/search", response_model=CastSearchResultDTO)

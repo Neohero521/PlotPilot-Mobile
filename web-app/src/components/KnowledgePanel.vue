@@ -4,8 +4,7 @@
       <div class="kp-hero-copy">
         <h3 class="kp-title">侧栏资料</h3>
         <p class="kp-lead">
-          可在「叙事与知识」「关系图」「三元组图谱」间切换：叙事含梗概锁定、章摘要与三元组编辑；关系图为
-          <code>cast</code> 人物网（与独立页同源）；三元组图谱由事实表生成力导向图，便于查看「主—谓—宾」网络。书目级梗概以
+          可在「叙事与知识」「关系图」「三元组图谱」间切换：叙事含梗概锁定、章摘要与三元组编辑；<strong>关系图从三元组自动生成</strong>（人物节点：谓词="是"且宾语含"主角/配角"；人物关系：谓词为"师徒/父子/朋友"等）；三元组图谱由事实表生成力导向图，便于查看「主—谓—宾」网络。书目级梗概以
           <strong>manifest</strong> 为准。
         </p>
       </div>
@@ -40,7 +39,7 @@
     <div v-show="sideTab === 'narrative'" class="kp-banner">
       <span class="kp-banner-dot" aria-hidden="true" />
       <span class="kp-banner-text">
-        梗概锁定、分章叙事与三元组可由工具（<code>story_*</code> / <code>kg_*</code>）写入，也可在此手改后保存。每章「节拍」对应大纲子段落；人物名请与关系图一致。
+        梗概锁定、分章叙事与三元组可由工具（<code>story_*</code> / <code>kg_*</code>）写入，也可在此手改后保存。每章「节拍」对应大纲子段落；人物名请与关系图一致。<strong>关系图规范：</strong>人物节点用「主—是—主角/配角」，关系用「张三—师徒/父子/朋友—李四」。
       </span>
     </div>
 

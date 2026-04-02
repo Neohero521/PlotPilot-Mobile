@@ -210,7 +210,7 @@ def get_cast_service() -> CastService:
     storage = get_storage()
     # Determine storage root based on storage base path
     storage_root = storage.base_path
-    return CastService(get_cast_repository(), storage_root)
+    return CastService(storage_root)
 
 
 def get_ai_generation_service() -> AIGenerationService:
