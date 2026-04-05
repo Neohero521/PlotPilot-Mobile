@@ -43,6 +43,10 @@
       <n-tab-pane name="sandbox" tab="对话沙盒">
         <SandboxDialoguePanel :slug="slug" />
       </n-tab-pane>
+
+      <n-tab-pane name="voice-drift" tab="文风漂移">
+        <VoiceDriftPanel :slug="slug" />
+      </n-tab-pane>
     </n-tabs>
 
     <!-- Chapter Info Card -->
@@ -87,6 +91,7 @@ import ForeshadowLedgerPanel from './ForeshadowLedgerPanel.vue'
 import MacroRefactorPanel from './MacroRefactorPanel.vue'
 import ChapterElementPanel from './ChapterElementPanel.vue'
 import SandboxDialoguePanel from './SandboxDialoguePanel.vue'
+import VoiceDriftPanel from './VoiceDriftPanel.vue'
 
 interface Chapter {
   id: number
