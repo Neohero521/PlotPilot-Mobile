@@ -5,18 +5,36 @@
     style="width: min(760px, 96vw); max-height: min(92vh, 860px)"
     :mask-closable="false"
     :segmented="{ content: true, footer: 'soft' }"
-    title="📐 宏观结构规划"
+    title="🎯 启动结构规划"
   >
     <template #header-extra>
-      <n-text depth="3" style="font-size: 12px">AI 生成部-卷-幕框架，确认后写入结构树</n-text>
+      <n-text depth="3" style="font-size: 12px">选择规划模式，AI 生成叙事骨架</n-text>
     </template>
 
-    <!-- Step 1：配置 -->
-    <n-scrollbar style="max-height: min(76vh, 720px)">
-      <n-space vertical :size="20">
-        <n-space v-if="!generated" vertical :size="16">
+    <!-- 模式选择选项卡 -->
+    <n-tabs v-if="!generated" v-model:value="planMode" type="segment" animated style="margin-bottom: 16px">
+      <n-tab-pane name="quick" tab="⚡ 快速生成">
+        <n-space vertical :size="16" style="padding: 16px 0">
           <n-alert type="info" :show-icon="true">
-            根据当前 Bible（世界观 + 写作公约）和目标篇幅，AI 生成完整的部-卷-幕叙事骨架，供你编辑后确认写入结构树。
+            只需一键，让 AI 基于您的世界观和人物，瞬间生成一套最具商业潜力的宏观叙事骨架。
+          </n-alert>
+          <n-card size="small" :bordered="false" style="background: var(--n-color-target)">
+            <n-space vertical :size="8">
+              <n-text strong>✨ 适合场景</n-text>
+              <n-ul style="margin: 0; padding-left: 20px">
+                <n-li>新手作者，快速起步</n-li>
+                <n-li>信任 AI 判断，追求效率</n-li>
+                <n-li>不确定具体结构，想要灵感</n-li>
+              </n-ul>
+            </n-space>
+          </n-card>
+        </n-space>
+      </n-tab-pane>
+
+      <n-tab-pane name="precise" tab="📐 精密定制">
+        <n-space vertical :size="16" style="padding: 16px 0">
+          <n-alert type="info" :show-icon="true">
+            自主设定目标篇幅与卷幕比例，精确掌控小说的节奏与体量。
           </n-alert>
 
           <n-card title="规划参数" size="small" :bordered="false">
@@ -24,12 +42,12 @@
               <n-form-item label="目标章节数" label-placement="left" label-width="100" :show-feedback="false">
                 <n-input-number
                   v-model:value="form.target_chapters"
-                  :min="10"
+                  :min="minChapters"
                   :max="1000"
                   :step="10"
                   style="width: 140px"
                 />
-                <n-text depth="3" style="margin-left:8px;font-size:12px">章（10-1000）</n-text>
+                <n-text depth="3" style="margin-left:8px;font-size:12px">章（{{ minChapters }}-1000）</n-text>
               </n-form-item>
 
               <n-form-item label="结构分布" label-placement="left" label-width="100" :show-feedback="false">
@@ -49,54 +67,68 @@
                     <n-input-number v-model:value="form.structure.acts_per_volume" :min="1" :max="10" style="width:72px" size="small" />
                   </n-space>
                   <n-tag type="info" size="small" round>
-                    共 {{ form.structure.parts * form.structure.volumes_per_part * form.structure.acts_per_volume }} 幕
+                    共 {{ totalActs }} 幕
                   </n-tag>
                 </n-space>
               </n-form-item>
+
+              <!-- 节奏预览 -->
+              <n-alert v-if="chaptersPerAct > 0" type="default" :show-icon="false" style="margin-top: 8px">
+                <n-space vertical :size="4">
+                  <n-text depth="2" style="font-size: 12px">
+                    💡 节奏预览：您的故事结构平均每幕将包含约 <n-text strong>{{ chaptersPerAct }}</n-text> 章
+                  </n-text>
+                  <n-text depth="3" style="font-size: 11px">
+                    {{ pacingHint }}
+                  </n-text>
+                </n-space>
+              </n-alert>
             </n-space>
           </n-card>
         </n-space>
+      </n-tab-pane>
+    </n-tabs>
 
-        <!-- Step 2：预览 + 编辑 -->
-        <template v-if="generated">
-          <n-alert type="success" :show-icon="true">
-            已生成 {{ structurePreview.length }} 个顶层节点的叙事骨架，可直接编辑标题和描述后确认写入。
-          </n-alert>
+    <!-- Step 2：预览 + 编辑 -->
+    <n-scrollbar v-if="generated" style="max-height: min(76vh, 720px)">
+      <n-space vertical :size="16">
+        <n-alert type="success" :show-icon="true">
+          已生成 {{ structurePreview.length }} 个顶层节点的叙事骨架，可直接编辑标题和描述后确认写入。
+        </n-alert>
 
-          <n-scrollbar style="max-height:52vh">
-            <n-space vertical :size="6" style="padding-right:8px">
-              <n-card
-                v-for="(node, idx) in structurePreview"
-                :key="idx"
+        <n-scrollbar style="max-height:52vh">
+          <n-space vertical :size="6" style="padding-right:8px">
+            <n-card
+              v-for="(node, idx) in structurePreview"
+              :key="idx"
+              size="small"
+              :bordered="true"
+              style="background: var(--n-color)"
+            >
+              <template #header>
+                <n-space align="center" :size="8">
+                  <n-tag :type="node.type === 'part' ? 'error' : node.type === 'volume' ? 'warning' : 'info'" size="small" round>
+                    {{ nodeTypeLabel(node.type) }}
+                  </n-tag>
+                  <n-input
+                    v-model:value="node.title"
+                    size="small"
+                    placeholder="标题"
+                    style="flex:1"
+                  />
+                </n-space>
+              </template>
+              <n-input
+                v-if="node.description !== undefined"
+                v-model:value="node.description"
+                type="textarea"
                 size="small"
-                :bordered="true"
-                style="background: var(--n-color)"
-              >
-                <template #header>
-                  <n-space align="center" :size="8">
-                    <n-tag :type="node.type === 'part' ? 'error' : node.type === 'volume' ? 'warning' : 'info'" size="small" round>
-                      {{ nodeTypeLabel(node.type) }}
-                    </n-tag>
-                    <n-input
-                      v-model:value="node.title"
-                      size="small"
-                      placeholder="标题"
-                      style="flex:1"
-                    />
-                  </n-space>
-                </template>
-                <n-input
-                  v-if="node.description !== undefined"
-                  v-model:value="node.description"
-                  type="textarea"
-                  size="small"
-                  placeholder="叙事目标（可选）"
-                  :autosize="{ minRows: 1, maxRows: 3 }"
-                />
-              </n-card>
-            </n-space>
-          </n-scrollbar>
-        </template>
+                placeholder="叙事目标（可选）"
+                :autosize="{ minRows: 1, maxRows: 3 }"
+              />
+            </n-card>
+          </n-space>
+        </n-scrollbar>
       </n-space>
     </n-scrollbar>
 
@@ -111,7 +143,7 @@
             :loading="loading"
             @click="doGenerate"
           >
-            AI 生成框架
+            {{ planMode === 'quick' ? '⚡ 一键生成' : '📐 生成框架' }}
           </n-button>
           <n-button
             v-else
@@ -131,6 +163,7 @@
 import { ref, computed } from 'vue'
 import { useMessage } from 'naive-ui'
 import { planningApi } from '../../api/planning'
+import { workflowApi } from '../../api/workflow'
 
 const props = defineProps<{ show: boolean; novelId: string }>()
 const emit = defineEmits<{
@@ -145,9 +178,36 @@ const show = computed({
 
 const message = useMessage()
 
+const planMode = ref<'quick' | 'precise'>('quick')
+
 const form = ref({
   target_chapters: 100,
   structure: { parts: 3, volumes_per_part: 3, acts_per_volume: 3 },
+})
+
+// 计算总幕数
+const totalActs = computed(() =>
+  form.value.structure.parts * form.value.structure.volumes_per_part * form.value.structure.acts_per_volume
+)
+
+// 动态最小章数（必须 >= 总幕数）
+const minChapters = computed(() => Math.max(10, totalActs.value))
+
+// 节奏预览：平均每幕章数
+const chaptersPerAct = computed(() => {
+  if (totalActs.value === 0) return 0
+  return Math.floor(form.value.target_chapters / totalActs.value)
+})
+
+// 节奏感知提示
+const pacingHint = computed(() => {
+  const avg = chaptersPerAct.value
+  if (avg === 0) return ''
+  if (avg <= 5) return '极速节奏：适合短篇或快节奏爽文'
+  if (avg <= 15) return '紧凑节奏：适合美剧式快节奏叙事'
+  if (avg <= 30) return '标准节奏：适合传统长篇小说'
+  if (avg <= 50) return '舒缓节奏：适合慢热修仙/史诗类'
+  return '超长节奏：适合超大型史诗巨著'
 })
 
 const loading = ref(false)
@@ -177,7 +237,26 @@ const flattenStructure = (nodes: unknown[]): { type: string; title: string; desc
 const doGenerate = async () => {
   loading.value = true
   try {
-    const res = await planningApi.generateMacro(props.novelId, form.value) as unknown as Record<string, unknown>
+    let res: Record<string, unknown>
+
+    if (planMode.value === 'quick') {
+      // 快速模式：调用 plan_novel API（AI 自主决定结构）
+      res = await workflowApi.planNovel(props.novelId, 'initial', false) as unknown as Record<string, unknown>
+
+      // plan_novel 直接写入了结构，显示成功消息并等待一下让用户看到
+      message.success('AI 已自动生成并写入叙事结构，正在刷新...', { duration: 2000 })
+
+      // 等待一小段时间让消息显示，然后触发刷新
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      emit('confirmed')
+      handleClose()
+      return
+    } else {
+      // 精密模式：调用 generate_macro API（用户指定结构）
+      res = await planningApi.generateMacro(props.novelId, form.value) as unknown as Record<string, unknown>
+    }
+
     rawResult.value = res
     // 尝试提取 structure 或 nodes 字段
     const nodes = (res.structure as unknown[]) || (res.nodes as unknown[]) || (res.data as unknown[]) || [res]
