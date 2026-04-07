@@ -271,25 +271,38 @@ class SqliteKnowledgeRepository:
             )
 
         summaries_sql = """
-            SELECT chapter_number, summary
+            SELECT chapter_number, summary, key_events, open_threads, 
+                   consistency_note, beat_sections, micro_beats, sync_status
             FROM chapter_summaries
             WHERE knowledge_id = ?
             ORDER BY chapter_number ASC
         """
         summaries_rows = self.db.fetch_all(summaries_sql, (knowledge["id"],))
 
-        chapters = [
-            ChapterSummary(
+        import json
+        chapters = []
+        for row in summaries_rows:
+            # 解析JSON字段
+            beat_sections = []
+            micro_beats = []
+            try:
+                if row["beat_sections"]:
+                    beat_sections = json.loads(row["beat_sections"])
+                if row["micro_beats"]:
+                    micro_beats = json.loads(row["micro_beats"])
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning("解析节拍数据失败: %s", e)
+            
+            chapters.append(ChapterSummary(
                 chapter_id=row["chapter_number"],
                 summary=row["summary"] or "",
-                key_events="",
-                open_threads="",
-                consistency_note="",
-                beat_sections=[],
-                sync_status="synced",
-            )
-            for row in summaries_rows
-        ]
+                key_events=row["key_events"] or "",
+                open_threads=row["open_threads"] or "",
+                consistency_note=row["consistency_note"] or "",
+                beat_sections=beat_sections,
+                micro_beats=micro_beats,
+                sync_status=row["sync_status"] or "synced",
+            ))
 
         return StoryKnowledge(
             novel_id=novel_id_str,
@@ -726,15 +739,35 @@ class SqliteKnowledgeRepository:
             for chapter in data.get("chapters", []):
                 chapter_number = chapter.get("number") or chapter.get("chapter_id")
                 summary_id = f"{knowledge_id}-ch{chapter_number}"
+                
+                # 将节拍数据转换为JSON字符串
+                import json
+                beat_sections_json = json.dumps(chapter.get("beat_sections", []), ensure_ascii=False)
+                micro_beats_json = json.dumps(chapter.get("micro_beats", []), ensure_ascii=False)
+                
                 conn.execute(
                     """
-                    INSERT INTO chapter_summaries (id, knowledge_id, chapter_number, summary, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO chapter_summaries 
+                    (id, knowledge_id, chapter_number, summary, key_events, open_threads, 
+                     consistency_note, beat_sections, micro_beats, sync_status, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(knowledge_id, chapter_number) DO UPDATE SET
                         summary = excluded.summary,
+                        key_events = excluded.key_events,
+                        open_threads = excluded.open_threads,
+                        consistency_note = excluded.consistency_note,
+                        beat_sections = excluded.beat_sections,
+                        micro_beats = excluded.micro_beats,
+                        sync_status = excluded.sync_status,
                         updated_at = excluded.updated_at
                     """,
-                    (summary_id, knowledge_id, chapter_number, chapter.get("summary", ""), now, now),
+                    (
+                        summary_id, knowledge_id, chapter_number, 
+                        chapter.get("summary", ""), chapter.get("key_events", ""),
+                        chapter.get("open_threads", ""), chapter.get("consistency_note", ""),
+                        beat_sections_json, micro_beats_json, 
+                        chapter.get("sync_status", "draft"), now, now
+                    ),
                 )
 
         logger.info("Saved complete knowledge for novel: %s", novel_id)
