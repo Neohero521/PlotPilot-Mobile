@@ -138,13 +138,10 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import StatCard from './StatCard.vue'
 import { useStatsStore } from '@/stores/statsStore'
-
-const GlobalLLMEntryButton = defineAsyncComponent(() => import('@/components/global/GlobalLLMEntryButton.vue'))
-const PromptPlazaEntryButton = defineAsyncComponent(() => import('@/components/global/PromptPlazaEntryButton.vue'))
 
 defineEmits<{
   (e: 'create-book'): void
