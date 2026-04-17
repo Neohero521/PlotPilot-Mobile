@@ -4,7 +4,7 @@
       <n-tag v-if="hasLowTension" type="warning" size="small">
         ⚠️ 检测到低张力章节
       </n-tag>
-      <n-button v-if="tensionData.length > 0" size="tiny" quaternary @click="loadTensionData">↻</n-button>
+      <n-button v-if="tensionData.length > 0" size="tiny" quaternary @click="refreshChart">↻</n-button>
     </template>
 
     <!-- 加载态 -->
@@ -80,6 +80,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 
 let chartInstance: ECharts | null = null
+let resizeObserver: ResizeObserver | null = null
 
 // 张力警戒线
 const tensionThreshold = computed(() => props.threshold ?? 5.0)
@@ -150,8 +151,16 @@ function renderChart() {
     return
   }
 
-  if (!chartInstance) {
+  // 如果实例已被销毁或不存在，重新初始化
+  if (!chartInstance || chartInstance.isDisposed()) {
     chartInstance = init(chartRef.value)
+    // 在 chartRef 确保存在后才初始化 ResizeObserver（解决 onMounted 时 chartRef 为 null 的问题）
+    if (!resizeObserver && chartRef.value) {
+      resizeObserver = new ResizeObserver(() => {
+        chartInstance?.resize()
+      })
+      resizeObserver.observe(chartRef.value)
+    }
   }
 
   const chapterNumbers = tensionData.value.map((d) => d.chapter_number)
@@ -297,18 +306,23 @@ function handleResize() {
   chartInstance?.resize()
 }
 
+// 刷新图表：重新加载数据并渲染
+async function refreshChart() {
+  // 先清空数据触发重新加载
+  tensionData.value = []
+  // 销毁旧实例确保重新初始化
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+  await nextTick()
+  await loadTensionData()
+}
+
 // ==================== 监听 ====================
 watch(() => props.novelId, () => void loadTensionData())
 
-// 数据变化时重新渲染（防抖）
-let resizeTimer: ReturnType<typeof setTimeout> | null = null
-watch(tensionData, () => {
-  if (resizeTimer) clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
-    renderChart()
-    resizeTimer = null
-  }, 100)
-})
+// 数据变化时重新渲染（由 loadTensionData 内部处理，避免重复调用）
 
 // ==================== 生命周期 ====================
 onMounted(() => {
@@ -318,7 +332,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  if (resizeTimer) clearTimeout(resizeTimer)
+  // 清理 ResizeObserver
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  // 显式 dispose 旧实例（Vue+ECharts 组件刷新必需）
   chartInstance?.dispose()
   chartInstance = null
 })
@@ -328,6 +347,7 @@ onUnmounted(() => {
 .chart-container {
   width: 100%;
   height: 200px;
+  min-height: 200px;
   position: relative;
 }
 
@@ -357,5 +377,17 @@ onUnmounted(() => {
   margin-top: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--n-border-color, rgba(0,0,0,0.08));
+}
+
+/* 确保卡片高度填满容器 */
+:deep(.n-card) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.n-card__content) {
+  flex: 1;
+  min-height: 0;
 }
 </style>
