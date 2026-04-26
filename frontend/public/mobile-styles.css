@@ -1,0 +1,201 @@
+/* PlotPilot 手机端适配样式 */
+
+/* 基础响应式设置 */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 移动端视口优化 */
+@media screen and (max-width: 768px) {
+  /* 主容器适配 */
+  #app {
+    min-height: 100vh;
+    min-height: 100dvh; /* 支持动态视口 */
+  }
+
+  /* 侧边栏收缩为底部导航 */
+  .sidebar,
+  .n-layout-sider {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: 56px !important;
+    z-index: 1000 !important;
+    flex-direction: row !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    padding: 4px 0 !important;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* 内容区域调整 */
+  .n-layout-content,
+  .main-content {
+    margin-bottom: 56px !important; /* 为底部导航留空间 */
+    padding: 12px !important;
+  }
+
+  /* 头部固定 */
+  .header,
+  .n-layout-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+    height: auto !important;
+    min-height: 48px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* 卡片布局优化 */
+  .n-card {
+    margin-bottom: 12px !important;
+  }
+
+  .n-card__content {
+    padding: 12px !important;
+  }
+
+  /* 表单元素适配 */
+  .n-input,
+  .n-select,
+  .n-button {
+    font-size: 16px !important; /* 防止 iOS 缩放 */
+  }
+
+  /* 按钮尺寸调整 */
+  .n-button {
+    padding: 10px 16px !important;
+  }
+
+  /* 表格横向滚动 */
+  .n-data-table {
+    overflow-x: auto !important;
+  }
+
+  .n-data-table table {
+    min-width: 600px !important;
+  }
+
+  /* 对话框全屏 */
+  .n-modal-container .n-dialog {
+    width: 92vw !important;
+    max-width: 400px !important;
+  }
+
+  /* 抽屉全屏 */
+  .n-drawer {
+    width: 85vw !important;
+  }
+
+  /* 字体大小调整 */
+  body {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+  }
+
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.1rem !important; }
+
+  /* 网格布局改为单列 */
+  .grid,
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Flex 布局调整 */
+  .flex-row {
+    flex-direction: column !important;
+  }
+
+  /* 编辑器区域优化 */
+  .editor-container,
+  .writing-area {
+    padding: 12px !important;
+    font-size: 16px !important;
+    line-height: 1.8 !important;
+  }
+
+  /* 底部安全区域 (iPhone X+) */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
+
+  /* 触摸优化 */
+  .touch-target {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* 隐藏滚动条但保留功能 */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 文本域适配 */
+  textarea,
+  .n-input__textarea {
+    min-height: 120px !important;
+    font-size: 16px !important;
+  }
+
+  /* 标签页横向滚动 */
+  .n-tabs-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .n-tabs-tab {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+/* 超小屏幕适配 (iPhone SE 等) */
+@media screen and (max-width: 375px) {
+  .n-layout-content,
+  .main-content {
+    padding: 8px !important;
+  }
+
+  .n-card__content {
+    padding: 10px !important;
+  }
+
+  h1 { font-size: 1.3rem !important; }
+  h2 { font-size: 1.1rem !important; }
+}
+
+/* 平板适配 */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .n-layout-content,
+  .main-content {
+    padding: 16px !important;
+  }
+
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* 深艳模式移动端优化 */
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+  .sidebar,
+  .n-layout-sider {
+    background: #1a2235 !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.1) !important;
+  }
+}
